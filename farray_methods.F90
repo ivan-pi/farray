@@ -6,6 +6,13 @@ subroutine farray_mm_dp(a,b,c) bind(c)
     C = matmul(A,B)
 end subroutine
 
+subroutine farray_transpose_dp(x,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double
+    real(c_double), intent(in) :: x(:,:)
+    real(c_double), intent(out) :: y(:,:)
+    y = transpose(x)
+end subroutine
+
 !
 ! Element-wise functions
 !

@@ -10,6 +10,8 @@ extern void farray_mm_dp(const CFI_cdesc_t *a,
                          const CFI_cdesc_t *b,
                                CFI_cdesc_t *c);
 
+extern void farray_transpose_dp(const CFI_cdesc_t *x, CFI_cdesc_t *y);
+
 //
 // Element-wise functions
 //
@@ -157,6 +159,48 @@ static HPy FArray_size_get(HPyContext *ctx, HPy self, void *closure)
     return HPyLong_FromSize_t(ctx, sz);
 }
 
+HPyDef_GET(FArray_transpose, "T",.doc="Transpose of the array")
+static HPy FArray_transpose_get(HPyContext *ctx, HPy self, void *closure)
+{
+    FArray *A = FArray_AsStruct(ctx, self);
+
+    // This operation only defined for matrices
+    if (A->a.rank != 2) {
+        return HPy_NULL;
+    }
+
+    FArray *B;
+    HPy hB = HPy_New(ctx, HPy_Type(ctx,self), &B);
+    if (HPy_IsNull(hB)) {
+        return HPy_NULL;
+    }
+
+    int status;
+    status = CFI_establish(
+        (CFI_cdesc_t *) &(B->a), NULL,  CFI_attribute_allocatable,
+        A->a.type, 0, A->a.rank, NULL);
+    assert(status == CFI_SUCCESS);
+    if (status != CFI_SUCCESS) {
+        return HPy_NULL;
+    }
+
+    CFI_index_t lb[FARRAY_MAX_RANK], ub[FARRAY_MAX_RANK];
+    const int mr = A->a.rank;
+    for (int i = 0; i < mr; i++) {
+        lb[mr - i - 1] = A->a.dim[i].lower_bound;
+        ub[mr - i - 1] = A->a.dim[i].lower_bound + A->a.dim[i].extent - 1;
+    }
+    status = CFI_allocate((CFI_cdesc_t *) &(B->a), lb, ub, 0);
+    assert(status == CFI_SUCCESS);
+    if (status != CFI_SUCCESS) {
+        return HPy_NULL;
+    }
+
+    // B = A^T
+    farray_transpose_dp((CFI_cdesc_t *) &(A->a), (CFI_cdesc_t *) &(B->a));
+
+    return hB;
+}
 
 HPyDef_METH(allocated, "allocated", HPyFunc_O)
 static HPy allocated_impl(HPyContext *ctx, HPy self, HPy arg)
@@ -227,6 +271,7 @@ static HPy matrix_transpose_impl(HPyContext *ctx, HPy self, HPy arg)
     B->y = A->x;
 
     // B = A^T
+    farray_transpose_dp((CFI_cdesc_t *) &(A->a), (CFI_cdesc_t *) &(B->a));
 
     return h_transpose;
 }
@@ -502,6 +547,7 @@ static HPyDef *FArray_defines[] = {
     &FArray_z,
     &FArray_shape,
     &FArray_size,
+    &FArray_transpose, // .T
     &FArray_ndim, // rank
     &FArray_version,
     &FArray_elem_len,
