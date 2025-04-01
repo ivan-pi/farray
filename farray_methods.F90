@@ -130,7 +130,7 @@ subroutine farray_reciprocal_dp(x,y) bind(c)
     use, intrinsic :: iso_c_binding, only: c_double
     real(c_double), intent(in) :: x(:,:)
     real(c_double), intent(out) :: y(:,:)
-    y = 1.0_c_double / x
+    y = real(1,c_double) / x
 end subroutine
 
 subroutine farray_subtract_dp(x1,x2,y) bind(c)
@@ -166,7 +166,7 @@ subroutine farray_sqrt_dp(x,y) bind(c)
     use, intrinsic :: iso_c_binding, only: c_double
     real(c_double), intent(in) :: x(:,:)
     real(c_double), intent(out) :: y(:,:)
-    y = sin(x)
+    y = sqrt(x)
 end subroutine
 
 subroutine farray_tan_dp(x,y) bind(c)
