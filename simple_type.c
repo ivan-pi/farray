@@ -2,6 +2,7 @@
 #include <hpy.h>
 
 #include <math.h> // for HUGE_VAL, NAN
+
 #include <ISO_Fortran_binding.h>
 
 // Fortran implementations from farray_methods.F90
@@ -47,6 +48,7 @@ extern void farray_hypot_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cd
 
 // BEGIN: FArray
 typedef struct {
+    // FIXME: delete x and x
     long x;
     long y;
     CFI_CDESC_T(FARRAY_MAX_RANK) a;
@@ -57,7 +59,7 @@ HPyType_HELPERS(FArray)
 
 static inline CFI_cdesc_t* FArray_get_descriptor(HPyContext *ctx, HPy self) {
     FArray *tmp = FArray_AsStruct(ctx,self);
-    return &FArray->a
+    return (CFI_cdesc_t *) &(tmp->a);
 }
 
 // BEGIN: members
@@ -364,46 +366,41 @@ static HPy FArray_matrix_multiply_impl(HPyContext *ctx, HPy ha, HPy hb)
     return hc;
 }
 
-HPyDef_SLOT(FArray_add, HPy_nb_add)
-static HPy FArray_add_impl(HPyContext *ctx, HPy ha, HPy hb)
-{
-    FArray *A = FArray_AsStruct(ctx, ha);
-    FArray *B = FArray_AsStruct(ctx, hb);
-
-    FArray *C;
-
-    // FIXME: class should come using other means
-
-    HPy hc = HPy_New(ctx, HPy_Type(ctx,ha), &C);
-    if (HPy_IsNull(hc)) {
-        return HPy_NULL;
-    }
-
-
-    int m = A->a.dim[0].extent;
-    int n = A->a.dim[1].extent;
-
-    const CFI_index_t lb[2] = {1, 1};
-    const CFI_index_t ub[2] = {m, n};
-
-    int status;
-    status = CFI_establish((CFI_cdesc_t *)&(C->a), NULL,  CFI_attribute_allocatable,
-                        CFI_type_double, 0, 2, NULL);
-    assert(status == CFI_SUCCESS);
-
-    status = CFI_allocate((CFI_cdesc_t *) &(C->a), lb, ub, 0);
-    assert(status == CFI_SUCCESS);
-
-    C->x = m;
-    C->y = n;
-
-    // matrix multiplication
-    farray_add_dp(
-        (CFI_cdesc_t *) &(A->a), (CFI_cdesc_t *) &(B->a),
-        (CFI_cdesc_t *) &(C->a));
-
-    return hc;
+#define FARRAY_BINARY_OP(OP, METHOD) \
+HPyDef_SLOT(FArray_##OP, HPy_nb_##OP) \
+static HPy FArray_##OP##_impl(HPyContext *ctx, HPy ha, HPy hb)         \
+{ \
+    FArray *A = FArray_AsStruct(ctx, ha); \
+    FArray *B = FArray_AsStruct(ctx, hb); \
+    FArray *C; \
+    /* FIXME: class should come using other means */ \
+    HPy hc = HPy_New(ctx, HPy_Type(ctx,ha), &C); \
+    if (HPy_IsNull(hc)) { \
+        return HPy_NULL; \
+    } \
+    int m = A->a.dim[0].extent; \
+    int n = A->a.dim[1].extent; \
+    const CFI_index_t lb[2] = {1, 1}; \
+    const CFI_index_t ub[2] = {m, n}; \
+    int status; \
+    status = CFI_establish((CFI_cdesc_t *)&(C->a), NULL,  CFI_attribute_allocatable, \
+                        CFI_type_double, 0, 2, NULL); \
+    assert(status == CFI_SUCCESS); \
+    status = CFI_allocate((CFI_cdesc_t *) &(C->a), lb, ub, 0); \
+    assert(status == CFI_SUCCESS); \
+    C->x = m; \
+    C->y = n; \
+    METHOD ( \
+        (CFI_cdesc_t *) &(A->a), (CFI_cdesc_t *) &(B->a), \
+        (CFI_cdesc_t *) &(C->a)); \
+    return hc; \
 }
+
+FARRAY_BINARY_OP(add,farray_add_dp)
+FARRAY_BINARY_OP(subtract,farray_subtract_dp)
+FARRAY_BINARY_OP(multiply,farray_multiply_dp)
+FARRAY_BINARY_OP(true_divide,farray_divide_dp)
+
 // END: slots
 
 // BEGIN: defines
@@ -421,6 +418,9 @@ static HPyDef *FArray_defines[] = {
     &FArray_new,
     &FArray_matrix_multiply,
     &FArray_add,
+    &FArray_subtract,
+    &FArray_multiply,
+    &FArray_true_divide,
     &FArray_foo,
     NULL
 };
