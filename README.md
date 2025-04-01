@@ -17,3 +17,8 @@ make
 python scripts/demo.py
 ```
 
+To run the extension, you may need to add the current folder to the Python path, i.e.
+
+```
+export PYTHONPATH=`pwd`
+```
