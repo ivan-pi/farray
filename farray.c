@@ -522,7 +522,7 @@ static HPyDef *FArray_defines[] = {
 
 // BEGIN: spec
 static HPyType_Spec FArray_spec = {
-    .name = "simple_type.FArray",
+    .name = "farray.FArray",
     .basicsize = sizeof(FArray),
     .builtin_shape = FArray_SHAPE,
     .defines = FArray_defines
@@ -537,6 +537,7 @@ static int simple_exec_impl(HPyContext *ctx, HPy m) {
     }
     return 0; // success
 }
+// END: add_type
 
 const double farray_e   = 2.7182818284590452353602874713526624977572470936999;
 const double farray_inf = HUGE_VAL;
@@ -555,9 +556,9 @@ static HPyDef *mod_defines[] = {
 
 static HPyModuleDef moduledef = {
     .defines = mod_defines,
-    // ...
-// END: add_type
-    .doc = "A simple HPy type",
+    .size = 0,
+    .doc = "A simple HPy array object in Fortran",
+    .legacy_methods = NULL
 };
 
-HPy_MODINIT(simple_type, moduledef)
+HPy_MODINIT(farray, moduledef)

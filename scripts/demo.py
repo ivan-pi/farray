@@ -1,7 +1,6 @@
 # demo.py
 
-
-import simple_type as fp
+import farray as far
 
 class finfo:
 
@@ -15,13 +14,13 @@ class finfo:
         self._dtype = type
 
 
-print(fp.capabilities())
+print(far.capabilities())
 
-a = fp.FArray(10,20)
-print(a.ndim, fp.allocated(a), a.x, a.y)
+a = far.FArray(10,20)
+print(a.ndim, far.allocated(a), a.x, a.y)
 
-b = fp.matrix_transpose(a)
-print(b.ndim, fp.allocated(b), b.x, b.y)
+b = far.matrix_transpose(a)
+print(b.ndim, far.allocated(b), b.x, b.y)
 
 print(a.shape)
 print(b.shape)
@@ -29,6 +28,6 @@ print(b.shape)
 c = a @ b
 print(c.shape)
 
-d = c + fp.abs(c)
+d = c + far.abs(c)
 print(d.shape)
 
