@@ -182,3 +182,81 @@ subroutine farray_tanh_dp(x,y) bind(c)
     real(c_double), intent(out) :: y(:,:)
     y = tanh(x)
 end subroutine
+
+
+
+subroutine farray_pow_dp_dp(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double
+    real(c_double), intent(in) :: x1(:,:), x2(:,:)
+    real(c_double), intent(out) :: y(:,:)
+    y = x1 + x2
+end subroutine
+
+subroutine farray_pow_dp_int32(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_int32_t
+    real(c_double), intent(in) :: x1(:,:)
+    integer(c_int32_t), intent(in) :: x2(:,:)
+    real(c_double), intent(out) :: y(:,:)
+    y = x1 ** x2
+end subroutine
+
+subroutine farray_pow_dp_int64(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_int64_t
+    real(c_double), intent(in) :: x1(:,:)
+    integer(c_int64_t), intent(in) :: x2(:,:)
+    real(c_double), intent(out) :: y(:,:)
+    y = x1 ** x2
+end subroutine
+
+subroutine farray_mod_dp_dp(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double
+    real(c_double), intent(in) :: x1(:,:), x2(:,:)
+    real(c_double), intent(out) :: y(:,:)
+    y = mod(x1, x2)
+end subroutine
+
+!
+! Comparison operators
+!
+
+subroutine farray_lt_dp_dp(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_bool
+    real(c_double), intent(in) :: x1(:,:), x2(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = x1 .lt. x2
+end subroutine
+
+subroutine farray_le_dp_dp(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_bool
+    real(c_double), intent(in) :: x1(:,:), x2(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = x1 .le. x2
+end subroutine
+
+subroutine farray_gt_dp_dp(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_bool
+    real(c_double), intent(in) :: x1(:,:), x2(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = x1 .gt. x2
+end subroutine
+
+subroutine farray_ge_dp_dp(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_bool
+    real(c_double), intent(in) :: x1(:,:), x2(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = x1 .ge. x2
+end subroutine
+
+subroutine farray_eq_dp_dp(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_bool
+    real(c_double), intent(in) :: x1(:,:), x2(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = x1 .eq. x2
+end subroutine
+
+subroutine farray_ne_dp_dp(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_bool
+    real(c_double), intent(in) :: x1(:,:), x2(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = x1 .eq. x2
+end subroutine

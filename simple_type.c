@@ -43,6 +43,21 @@ extern void farray_multiply_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI
 extern void farray_divide_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 extern void farray_hypot_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 
+
+extern void farray_pow_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+extern void farray_pow_dp_int32(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+extern void farray_pow_dp_int64(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+
+extern void farray_mod_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+
+
+extern void farray_lt_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+extern void farray_le_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+extern void farray_gt_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+extern void farray_ge_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+extern void farray_eq_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+extern void farray_ne_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+
 // Maximum supported array rank
 #define FARRAY_MAX_RANK 2
 
@@ -366,8 +381,8 @@ static HPy FArray_matrix_multiply_impl(HPyContext *ctx, HPy ha, HPy hb)
     return hc;
 }
 
-#define FARRAY_BINARY_OP(OP, METHOD) \
-HPyDef_SLOT(FArray_##OP, HPy_nb_##OP) \
+#define FARRAY_BINARY_OP(OP, SLOT, METHOD, RESULT_TYPE) \
+HPyDef_SLOT(FArray_##OP, HPy_##SLOT) \
 static HPy FArray_##OP##_impl(HPyContext *ctx, HPy ha, HPy hb)         \
 { \
     FArray *A = FArray_AsStruct(ctx, ha); \
@@ -384,7 +399,7 @@ static HPy FArray_##OP##_impl(HPyContext *ctx, HPy ha, HPy hb)         \
     const CFI_index_t ub[2] = {m, n}; \
     int status; \
     status = CFI_establish((CFI_cdesc_t *)&(C->a), NULL,  CFI_attribute_allocatable, \
-                        CFI_type_double, 0, 2, NULL); \
+                        RESULT_TYPE, 0, 2, NULL); \
     assert(status == CFI_SUCCESS); \
     status = CFI_allocate((CFI_cdesc_t *) &(C->a), lb, ub, 0); \
     assert(status == CFI_SUCCESS); \
@@ -396,10 +411,87 @@ static HPy FArray_##OP##_impl(HPyContext *ctx, HPy ha, HPy hb)         \
     return hc; \
 }
 
-FARRAY_BINARY_OP(add,farray_add_dp)
-FARRAY_BINARY_OP(subtract,farray_subtract_dp)
-FARRAY_BINARY_OP(multiply,farray_multiply_dp)
-FARRAY_BINARY_OP(true_divide,farray_divide_dp)
+FARRAY_BINARY_OP(add,nb_add,farray_add_dp, CFI_type_double)
+FARRAY_BINARY_OP(subtract,nb_subtract,farray_subtract_dp, CFI_type_double)
+FARRAY_BINARY_OP(multiply,nb_multiply,farray_multiply_dp, CFI_type_double)
+FARRAY_BINARY_OP(true_divide,nb_true_divide,farray_divide_dp, CFI_type_double)
+FARRAY_BINARY_OP(remainder,nb_remainder,farray_mod_dp_dp, CFI_type_double)
+
+// FIXME: other types
+
+// FIXME: we may need to patch around this issue:
+//        https://github.com/hpyproject/hpy/issues/483
+//FARRAY_BINARY_OP(power,farray_pow_dp_dp)
+
+HPyDef_SLOT(FArray_richcompare, HPy_tp_richcompare)
+static HPy FArray_richcompare_impl(HPyContext *ctx, HPy ha, HPy hb, HPy_RichCmpOp op)
+{
+    FArray *A = FArray_AsStruct(ctx, ha);
+    FArray *B = FArray_AsStruct(ctx, hb);
+    FArray *C;
+    /* FIXME: class should come using other means */
+    HPy hc = HPy_New(ctx, HPy_Type(ctx,ha), &C);
+    if (HPy_IsNull(hc)) {
+        return HPy_NULL;
+    }
+    int m = A->a.dim[0].extent;
+    int n = A->a.dim[1].extent;
+    const CFI_index_t lb[2] = {1, 1};
+    const CFI_index_t ub[2] = {m, n};
+    int status;
+    status = CFI_establish((CFI_cdesc_t *)&(C->a), NULL,  CFI_attribute_allocatable,
+                        CFI_type_Bool, 0, 2, NULL);
+    assert(status == CFI_SUCCESS);
+    status = CFI_allocate((CFI_cdesc_t *) &(C->a), lb, ub, 0);
+    assert(status == CFI_SUCCESS);
+    C->x = m;
+    C->y = n;
+
+    do {
+        switch (op) {
+        case HPy_EQ:
+            farray_eq_dp_dp(
+                (CFI_cdesc_t *) &(A->a),
+                (CFI_cdesc_t *) &(B->a),
+                (CFI_cdesc_t *) &(C->a));
+            break;
+        case HPy_NE:
+            farray_ne_dp_dp(
+                (CFI_cdesc_t *) &(A->a),
+                (CFI_cdesc_t *) &(B->a),
+                (CFI_cdesc_t *) &(C->a));
+            break;
+        case HPy_LT:
+            farray_lt_dp_dp(
+                (CFI_cdesc_t *) &(A->a),
+                (CFI_cdesc_t *) &(B->a),
+                (CFI_cdesc_t *) &(C->a));
+            break;
+        case HPy_GT:
+            farray_gt_dp_dp(
+                (CFI_cdesc_t *) &(A->a),
+                (CFI_cdesc_t *) &(B->a),
+                (CFI_cdesc_t *) &(C->a));
+            break;
+        case HPy_LE:
+            farray_le_dp_dp(
+                (CFI_cdesc_t *) &(A->a),
+                (CFI_cdesc_t *) &(B->a),
+                (CFI_cdesc_t *) &(C->a));
+            break;
+        case HPy_GE:
+            farray_ge_dp_dp(
+                (CFI_cdesc_t *) &(A->a),
+                (CFI_cdesc_t *) &(B->a),
+                (CFI_cdesc_t *) &(C->a));
+            break;
+        default:
+            HPy_FatalError(ctx, "Invalid value for HPy_RichCmpOp");
+        }
+    } while (0);
+
+    return hc;
+}
 
 // END: slots
 
@@ -421,6 +513,8 @@ static HPyDef *FArray_defines[] = {
     &FArray_subtract,
     &FArray_multiply,
     &FArray_true_divide,
+    &FArray_remainder,
+    &FArray_richcompare,
     &FArray_foo,
     NULL
 };
