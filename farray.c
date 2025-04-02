@@ -40,6 +40,11 @@ extern void farray_tan_dp(const CFI_cdesc_t *x, CFI_cdesc_t *y);
 extern void farray_tanh_dp(const CFI_cdesc_t *x, CFI_cdesc_t *y);
 extern void farray_reciprocal_dp(const CFI_cdesc_t *x, CFI_cdesc_t *y);
 
+extern void farray_invert_int32_t(const CFI_cdesc_t *x, CFI_cdesc_t *y);
+extern void farray_invert_int64_t(const CFI_cdesc_t *x, CFI_cdesc_t *y);
+extern void farray_invert_Bool(const CFI_cdesc_t *x, CFI_cdesc_t *y);
+
+
 extern void farray_add_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 extern void farray_subtract_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 extern void farray_multiply_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
@@ -52,7 +57,6 @@ extern void farray_pow_dp_int32(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CF
 extern void farray_pow_dp_int64(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 
 extern void farray_mod_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
-
 
 extern void farray_lt_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 extern void farray_le_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
@@ -477,7 +481,43 @@ static HPy FArray_index_impl(HPyContext *ctx, HPy hx)
     return HPyLong_FromLong(ctx, result); \
 }
 
-//FARRAY_UNARY_OP(invert,nb_invert,farray_invert_dp,CFI_type_double)
+HPyDef_SLOT(FArray_invert, HPy_nb_invert)
+static HPy FArray_invert_impl(HPyContext *ctx, HPy hx)
+{
+    FArray *x = FArray_AsStruct(ctx, hx);
+    FArray *y;
+
+    /* FIXME: class should come using other means */
+    HPy hy = HPy_New(ctx, HPy_Type(ctx,hx), &y);
+    if (HPy_IsNull(hy)) {
+        return HPy_NULL;
+    }
+    int m = x->a.dim[0].extent;
+    int n = x->a.dim[1].extent;
+    const CFI_index_t lb[2] = {1, 1};
+    const CFI_index_t ub[2] = {m, n};
+    int status; \
+    status = CFI_establish((CFI_cdesc_t *)&(y->a), NULL,  CFI_attribute_allocatable,
+                        x->a.type, 0, x->a.rank, NULL);
+    if (status != CFI_SUCCESS) return HPy_NULL;
+    status = CFI_allocate((CFI_cdesc_t *) &(y->a), lb, ub, 0);
+    if (status != CFI_SUCCESS) return HPy_NULL;
+
+    switch(x->a.type) {
+    case CFI_type_int32_t:
+        farray_invert_int32_t((CFI_cdesc_t *) &(x->a), (CFI_cdesc_t *) &(y->a));
+        break;
+    case CFI_type_int64_t:
+        farray_invert_int64_t((CFI_cdesc_t *) &(x->a), (CFI_cdesc_t *) &(y->a));
+        break;
+    case CFI_type_Bool:
+        farray_invert_Bool((CFI_cdesc_t *) &(x->a), (CFI_cdesc_t *) &(y->a));
+        break;
+    default:
+        HPy_FatalError(ctx, "cfi type not implemented for int()");
+    }
+    return hy; \
+}
 
 HPyDef_SLOT(FArray_matrix_multiply, HPy_nb_matrix_multiply)
 static HPy FArray_matrix_multiply_impl(HPyContext *ctx, HPy ha, HPy hb)
@@ -653,6 +693,7 @@ static HPyDef *FArray_defines[] = {
     &FArray_absolute,
     &FArray_positive,
     &FArray_negative,
+    &FArray_invert,
     &FArray_float,
     &FArray_int,
     &FArray_index,

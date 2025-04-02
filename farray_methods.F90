@@ -191,6 +191,27 @@ subroutine farray_tanh_dp(x,y) bind(c)
 end subroutine
 
 
+subroutine farray_invert_int32_t(x,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_int32_t
+    integer(c_int32_t), intent(in) :: x(:,:)
+    integer(c_int32_t), intent(out) :: y(:,:)
+    y = not(x)
+end subroutine
+
+subroutine farray_invert_int64_t(x,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_int64_t
+    integer(c_int64_t), intent(in) :: x(:,:)
+    integer(c_int64_t), intent(out) :: y(:,:)
+    y = not(x)
+end subroutine
+
+subroutine farray_invert_Bool(x,y) bind(c,name="farray_invert_Bool")
+    use, intrinsic :: iso_c_binding, only: c_bool
+    logical(c_bool), intent(in) :: x(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = .not. x
+end subroutine
+
 
 subroutine farray_pow_dp_dp(x1,x2,y) bind(c)
     use, intrinsic :: iso_c_binding, only: c_double
