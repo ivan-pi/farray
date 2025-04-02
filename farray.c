@@ -276,6 +276,7 @@ static HPy matrix_transpose_impl(HPyContext *ctx, HPy self, HPy arg)
     return h_transpose;
 }
 
+
 HPyDef_METH(elem_abs, "abs", HPyFunc_O)
 static HPy elem_abs_impl(HPyContext *ctx, HPy self, HPy arg)
 {
@@ -382,6 +383,43 @@ static HPy FArray_new_impl(HPyContext *ctx, HPy cls, const HPy *args,
     return h_arr;
 }
 
+
+#define FARRAY_UNARY_OP(OP, SLOT, METHOD, RESULT_TYPE) \
+HPyDef_SLOT(FArray_##OP, HPy_##SLOT) \
+static HPy FArray_##OP##_impl(HPyContext *ctx, HPy hx)         \
+{ \
+    FArray *x = FArray_AsStruct(ctx, hx); \
+    FArray *y; \
+    /* FIXME: class should come using other means */ \
+    HPy hy = HPy_New(ctx, HPy_Type(ctx,hx), &y); \
+    if (HPy_IsNull(hy)) { \
+        return HPy_NULL; \
+    } \
+    int m = x->a.dim[0].extent; \
+    int n = x->a.dim[1].extent; \
+    const CFI_index_t lb[2] = {1, 1}; \
+    const CFI_index_t ub[2] = {m, n}; \
+    int status; \
+    status = CFI_establish((CFI_cdesc_t *)&(y->a), NULL,  CFI_attribute_allocatable, \
+                        RESULT_TYPE, 0, x->a.rank, NULL); \
+    if (status != CFI_SUCCESS) return HPy_NULL; \
+    status = CFI_allocate((CFI_cdesc_t *) &(y->a), lb, ub, 0); \
+    if (status != CFI_SUCCESS) return HPy_NULL; \
+    y->x = m; \
+    y->y = n; \
+    METHOD ( \
+        (CFI_cdesc_t *) &(x->a), (CFI_cdesc_t *) &(y->a)); \
+    return hy; \
+}
+
+FARRAY_UNARY_OP(absolute,nb_absolute,farray_abs_dp,CFI_type_double)
+FARRAY_UNARY_OP(negative,nb_negative,farray_negative_dp,CFI_type_double)
+FARRAY_UNARY_OP(positive,nb_positive,farray_positive_dp,CFI_type_double)
+
+//FARRAY_UNARY_OP(float,nb_float,farray_float_dp,CFI_type_double)
+//FARRAY_UNARY_OP(index,nb_index,farray_index_dp,CFI_type_double)
+//FARRAY_UNARY_OP(int,nb_int,farray_int_dp,CFI_type_double)
+//FARRAY_UNARY_OP(invert,nb_invert,farray_invert_dp,CFI_type_double)
 
 HPyDef_SLOT(FArray_matrix_multiply, HPy_nb_matrix_multiply)
 static HPy FArray_matrix_multiply_impl(HPyContext *ctx, HPy ha, HPy hb)
@@ -554,6 +592,9 @@ static HPyDef *FArray_defines[] = {
     &FArray_attribute,
     &FArray_f_type,
     &FArray_new,
+    &FArray_absolute,
+    &FArray_positive,
+    &FArray_negative,
     &FArray_matrix_multiply,
     &FArray_add,
     &FArray_subtract,
