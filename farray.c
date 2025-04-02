@@ -40,10 +40,26 @@ extern void farray_tan_dp(const CFI_cdesc_t *x, CFI_cdesc_t *y);
 extern void farray_tanh_dp(const CFI_cdesc_t *x, CFI_cdesc_t *y);
 extern void farray_reciprocal_dp(const CFI_cdesc_t *x, CFI_cdesc_t *y);
 
+
+//
+// Bitwise operators
+//
+
 extern void farray_invert_int32_t(const CFI_cdesc_t *x, CFI_cdesc_t *y);
 extern void farray_invert_int64_t(const CFI_cdesc_t *x, CFI_cdesc_t *y);
 extern void farray_invert_Bool(const CFI_cdesc_t *x, CFI_cdesc_t *y);
 
+extern void farray_and_int32_t(const CFI_cdesc_t *x1, const CFI_cdesc_t *x2, CFI_cdesc_t *y);
+extern void farray_and_int64_t(const CFI_cdesc_t *x1, const CFI_cdesc_t *x2, CFI_cdesc_t *y);
+extern void farray_and_Bool(const CFI_cdesc_t *x1, const CFI_cdesc_t *x2, CFI_cdesc_t *y);
+
+extern void farray_or_int32_t(const CFI_cdesc_t *x1, const CFI_cdesc_t *x2, CFI_cdesc_t *y);
+extern void farray_or_int64_t(const CFI_cdesc_t *x1, const CFI_cdesc_t *x2, CFI_cdesc_t *y);
+extern void farray_or_Bool(const CFI_cdesc_t *x1, const CFI_cdesc_t *x2, CFI_cdesc_t *y);
+
+extern void farray_xor_int32_t(const CFI_cdesc_t *x1, const CFI_cdesc_t *x2, CFI_cdesc_t *y);
+extern void farray_xor_int64_t(const CFI_cdesc_t *x1, const CFI_cdesc_t *x2, CFI_cdesc_t *y);
+extern void farray_xor_Bool(const CFI_cdesc_t *x1, const CFI_cdesc_t *x2, CFI_cdesc_t *y);
 
 extern void farray_add_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 extern void farray_subtract_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
@@ -57,6 +73,10 @@ extern void farray_pow_dp_int32(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CF
 extern void farray_pow_dp_int64(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 
 extern void farray_mod_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
+
+//
+// Comparison operators
+//
 
 extern void farray_lt_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 extern void farray_le_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);

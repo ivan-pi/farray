@@ -191,33 +191,11 @@ subroutine farray_tanh_dp(x,y) bind(c)
 end subroutine
 
 
-subroutine farray_invert_int32_t(x,y) bind(c)
-    use, intrinsic :: iso_c_binding, only: c_int32_t
-    integer(c_int32_t), intent(in) :: x(:,:)
-    integer(c_int32_t), intent(out) :: y(:,:)
-    y = not(x)
-end subroutine
-
-subroutine farray_invert_int64_t(x,y) bind(c)
-    use, intrinsic :: iso_c_binding, only: c_int64_t
-    integer(c_int64_t), intent(in) :: x(:,:)
-    integer(c_int64_t), intent(out) :: y(:,:)
-    y = not(x)
-end subroutine
-
-subroutine farray_invert_Bool(x,y) bind(c,name="farray_invert_Bool")
-    use, intrinsic :: iso_c_binding, only: c_bool
-    logical(c_bool), intent(in) :: x(:,:)
-    logical(c_bool), intent(out) :: y(:,:)
-    y = .not. x
-end subroutine
-
-
 subroutine farray_pow_dp_dp(x1,x2,y) bind(c)
     use, intrinsic :: iso_c_binding, only: c_double
     real(c_double), intent(in) :: x1(:,:), x2(:,:)
     real(c_double), intent(out) :: y(:,:)
-    y = x1 + x2
+    y = x1 ** x2
 end subroutine
 
 subroutine farray_pow_dp_int32(x1,x2,y) bind(c)
@@ -286,5 +264,95 @@ subroutine farray_ne_dp_dp(x1,x2,y) bind(c)
     use, intrinsic :: iso_c_binding, only: c_double, c_bool
     real(c_double), intent(in) :: x1(:,:), x2(:,:)
     logical(c_bool), intent(out) :: y(:,:)
-    y = x1 .eq. x2
+    y = x1 .ne. x2
+end subroutine
+
+!
+! Bitwise operators
+!
+
+subroutine farray_invert_int32_t(x,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_int32_t
+    integer(c_int32_t), intent(in) :: x(:,:)
+    integer(c_int32_t), intent(out) :: y(:,:)
+    y = not(x)
+end subroutine
+
+subroutine farray_invert_int64_t(x,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_int64_t
+    integer(c_int64_t), intent(in) :: x(:,:)
+    integer(c_int64_t), intent(out) :: y(:,:)
+    y = not(x)
+end subroutine
+
+subroutine farray_invert_Bool(x,y) bind(c,name="farray_invert_Bool")
+    use, intrinsic :: iso_c_binding, only: c_bool
+    logical(c_bool), intent(in) :: x(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = .not. x
+end subroutine
+
+
+subroutine farray_and_int32_t(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_int32_t
+    integer(c_int32_t), intent(in) :: x1(:,:), x2(:,:)
+    integer(c_int32_t), intent(out) :: y(:,:)
+    y = iand(x1,x2)
+end subroutine
+
+subroutine farray_and_int64_t(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_int64_t
+    integer(c_int64_t), intent(in) :: x1(:,:), x2(:,:)
+    integer(c_int64_t), intent(out) :: y(:,:)
+    y = iand(x1,x2)
+end subroutine
+
+subroutine farray_and_Bool(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_bool
+    logical(c_bool), intent(in) :: x1(:,:), x2(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = x1 .and. x2
+end subroutine
+
+
+subroutine farray_or_int32_t(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_int32_t
+    integer(c_int32_t), intent(in) :: x1(:,:), x2(:,:)
+    integer(c_int32_t), intent(out) :: y(:,:)
+    y = ior(x1,x2)
+end subroutine
+
+subroutine farray_or_int64_t(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_int64_t
+    integer(c_int64_t), intent(in) :: x1(:,:), x2(:,:)
+    integer(c_int64_t), intent(out) :: y(:,:)
+    y = ior(x1,x2)
+end subroutine
+
+subroutine farray_or_Bool(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_bool
+    logical(c_bool), intent(in) :: x1(:,:), x2(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = x1 .or. x2
+end subroutine
+
+subroutine farray_xor_int32_t(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_int32_t
+    integer(c_int32_t), intent(in) :: x1(:,:), x2(:,:)
+    integer(c_int32_t), intent(out) :: y(:,:)
+    y = ieor(x1,x2)
+end subroutine
+
+subroutine farray_xor_int64_t(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_int64_t
+    integer(c_int64_t), intent(in) :: x1(:,:), x2(:,:)
+    integer(c_int64_t), intent(out) :: y(:,:)
+    y = ieor(x1,x2)
+end subroutine
+
+subroutine farray_xor_Bool(x1,x2,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_bool
+    logical(c_bool), intent(in) :: x1(:,:), x2(:,:)
+    logical(c_bool), intent(out) :: y(:,:)
+    y = x1 .neqv. x2
 end subroutine
