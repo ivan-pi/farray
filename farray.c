@@ -85,11 +85,12 @@ extern void farray_ge_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cd
 extern void farray_eq_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 extern void farray_ne_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cdesc_t *y);
 
-#define FARRAY_UNARY_CALL(FUNC,X,Y) \
-    FUNC((CFI_cdesc_t *) &(X->a), (CFI_cdesc_t *) &(Y->a))
+#define FARRAY_CAST(X) (CFI_cdesc_t *) &(X->a)
 
+#define FARRAY_UNARY_CALL(FUNC,X,Y) \
+    FUNC(FARRAY_CAST(X), FARRAY_CAST(Y))
 #define FARRAY_BINARY_CALL(FUNC,X1,X2,Y) \
-    FUNC((CFI_cdesc_t *) &(X1->a), (CFI_cdesc_t *) &(X2->a), (CFI_cdesc_t *) &(Y->a))
+    FUNC(FARRAY_CAST(X1), FARRAY_CAST(X2), FARRAY_CAST(Y))
 
 // BEGIN: dtype
 typedef struct {
@@ -102,9 +103,6 @@ HPyType_HELPERS(dtype);
 // Maximum supported array rank
 #define FARRAY_MAX_RANK 2
 typedef struct {
-    // FIXME: delete x and x
-    long x;
-    long y;
     CFI_CDESC_T(FARRAY_MAX_RANK) a;
 } FArray;
 HPyType_HELPERS(FArray)
@@ -150,7 +148,7 @@ HPyDef_METH(FArray_foo, "foo", HPyFunc_NOARGS)
 static HPy FArray_foo_impl(HPyContext *ctx, HPy self)
 {
     FArray *arr = FArray_AsStruct(ctx, self);
-    return HPyLong_FromLong(ctx, arr->x * 10 + arr->y);
+    return HPyLong_FromLong(ctx, 42);
 }
 
 
@@ -197,7 +195,6 @@ HPyDef_GET(FArray_transpose, "T",.doc="Transpose of the array")
 static HPy FArray_transpose_get(HPyContext *ctx, HPy self, void *closure)
 {
     FArray *A = FArray_AsStruct(ctx, self);
-
     // This operation only defined for matrices
     if (A->a.rank != 2) {
         return HPy_NULL;
@@ -213,7 +210,6 @@ static HPy FArray_transpose_get(HPyContext *ctx, HPy self, void *closure)
     status = CFI_establish(
         (CFI_cdesc_t *) &(B->a), NULL,  CFI_attribute_allocatable,
         A->a.type, 0, A->a.rank, NULL);
-    assert(status == CFI_SUCCESS);
     if (status != CFI_SUCCESS) {
         return HPy_NULL;
     }
@@ -225,14 +221,10 @@ static HPy FArray_transpose_get(HPyContext *ctx, HPy self, void *closure)
         ub[mr - i - 1] = A->a.dim[i].lower_bound + A->a.dim[i].extent - 1;
     }
     status = CFI_allocate((CFI_cdesc_t *) &(B->a), lb, ub, 0);
-    assert(status == CFI_SUCCESS);
     if (status != CFI_SUCCESS) {
         return HPy_NULL;
     }
-
-    // B = A^T
-    farray_transpose_dp((CFI_cdesc_t *) &(A->a), (CFI_cdesc_t *) &(B->a));
-
+    FARRAY_UNARY_CALL(farray_transpose_dp,A,B);
     return hB;
 }
 
@@ -254,7 +246,7 @@ static HPy capabilities_impl(HPyContext *ctx, HPy self) {
     HPy hd = HPy_BuildValue(ctx, "{s:O, s:O, s:O}",
             "boolean indexing", HPyBool_FromBool(ctx,false),
             "data-dependent shapes", HPyBool_FromBool(ctx,false),
-            "max dimensions", HPyLong_FromInt32_t(ctx, 2));
+            "max dimensions", HPyLong_FromInt32_t(ctx, FARRAY_MAX_RANK));
 
     if (HPy_IsNull(hd)) {
         return HPy_NULL;
@@ -281,8 +273,6 @@ static HPy matrix_transpose_impl(HPyContext *ctx, HPy self, HPy arg)
     status = CFI_establish(
         (CFI_cdesc_t *) &(B->a), NULL,  CFI_attribute_allocatable,
         A->a.type, 0, A->a.rank, NULL);
-    assert(status == CFI_SUCCESS);
-
     if (status != CFI_SUCCESS) {
         return HPy_NULL;
     }
@@ -295,18 +285,11 @@ static HPy matrix_transpose_impl(HPyContext *ctx, HPy self, HPy arg)
     }
 
     status = CFI_allocate((CFI_cdesc_t *) &(B->a), lb, ub, 0);
-    assert(status == CFI_SUCCESS);
-
     if (status != CFI_SUCCESS) {
         return HPy_NULL;
     }
 
-    B->x = A->y;
-    B->y = A->x;
-
-    // B = A^T
-    farray_transpose_dp((CFI_cdesc_t *) &(A->a), (CFI_cdesc_t *) &(B->a));
-
+    FARRAY_UNARY_CALL(farray_transpose_dp, A, B);
     return h_transpose;
 }
 
@@ -327,8 +310,6 @@ static HPy elem_abs_impl(HPyContext *ctx, HPy self, HPy arg)
     status = CFI_establish(
         (CFI_cdesc_t *) &(y->a), NULL,  CFI_attribute_allocatable,
         x->a.type, 0, x->a.rank, NULL);
-    assert(status == CFI_SUCCESS);
-
     if (status != CFI_SUCCESS) {
         return HPy_NULL;
     }
@@ -341,22 +322,15 @@ static HPy elem_abs_impl(HPyContext *ctx, HPy self, HPy arg)
     }
 
     status = CFI_allocate((CFI_cdesc_t *) &(y->a), lb, ub, 0);
-    assert(status == CFI_SUCCESS);
-
     if (status != CFI_SUCCESS) {
         return HPy_NULL;
     }
-
-    y->x = x->y;
-    y->y = x->x;
 
     // FIMXME: for unary functions like abs and similar we should
     // have a static inline layer which does the type dispatch
 
     if (x->a.type == CFI_type_double) {
-        farray_abs_dp(
-            (CFI_cdesc_t *) &(x->a),
-            (CFI_cdesc_t *) &(y->a));
+        FARRAY_UNARY_CALL(farray_abs_dp,x,y);
     } else {
         return HPy_NULL;
     }
@@ -370,15 +344,15 @@ HPyDef_GETSET(FArray_z, "z", .closure=(void *)1000)
 static HPy FArray_z_get(HPyContext *ctx, HPy self, void *closure)
 {
     FArray *arr = FArray_AsStruct(ctx, self);
-    return HPyLong_FromLong(ctx, arr->x*10 + arr->y + (long)(HPy_ssize_t)closure);
+    return HPyLong_FromLong(ctx, 42 + (long)(HPy_ssize_t)closure);
 }
 
 static int FArray_z_set(HPyContext *ctx, HPy self, HPy value, void *closure)
 {
     FArray *arr = FArray_AsStruct(ctx, self);
-    long current = arr->x*10 + arr->y + (long)(HPy_ssize_t)closure;
+    long current = 42 + (long)(HPy_ssize_t)closure;
     long target = HPyLong_AsLong(ctx, value);  // assume no exception
-    arr->y += target - current;
+    //arr->y += target - current;
     return 0;
 }
 // END: getset
@@ -411,9 +385,6 @@ static HPy FArray_new_impl(HPyContext *ctx, HPy cls, const HPy *args,
     status = CFI_allocate((CFI_cdesc_t *) &(arr->a), lb, ub, 0);
     assert(status == CFI_SUCCESS);
 
-    arr->x = x;
-    arr->y = y;
-
     return h_arr;
 }
 
@@ -439,10 +410,7 @@ static HPy FArray_##OP##_impl(HPyContext *ctx, HPy hx)         \
     if (status != CFI_SUCCESS) return HPy_NULL; \
     status = CFI_allocate((CFI_cdesc_t *) &(y->a), lb, ub, 0); \
     if (status != CFI_SUCCESS) return HPy_NULL; \
-    y->x = m; \
-    y->y = n; \
-    METHOD ( \
-        (CFI_cdesc_t *) &(x->a), (CFI_cdesc_t *) &(y->a)); \
+    FARRAY_UNARY_CALL(METHOD,x,y); \
     return hy; \
 }
 
@@ -533,15 +501,9 @@ static HPy FArray_invert_impl(HPyContext *ctx, HPy hx)
     if (status != CFI_SUCCESS) return HPy_NULL;
 
     switch(x->a.type) {
-    case CFI_type_int32_t:
-        farray_invert_int32_t((CFI_cdesc_t *) &(x->a), (CFI_cdesc_t *) &(y->a));
-        break;
-    case CFI_type_int64_t:
-        farray_invert_int64_t((CFI_cdesc_t *) &(x->a), (CFI_cdesc_t *) &(y->a));
-        break;
-    case CFI_type_Bool:
-        farray_invert_Bool((CFI_cdesc_t *) &(x->a), (CFI_cdesc_t *) &(y->a));
-        break;
+    case CFI_type_int32_t: FARRAY_UNARY_CALL(farray_invert_int32_t,x,y); break;
+    case CFI_type_int64_t: FARRAY_UNARY_CALL(farray_invert_int64_t,x,y); break;
+    case CFI_type_Bool: FARRAY_UNARY_CALL(farray_invert_Bool,x,y); break;
     default:
         HPy_FatalError(ctx, "cfi type not implemented for invert()");
     }
@@ -600,9 +562,6 @@ static HPy FArray_matrix_multiply_impl(HPyContext *ctx, HPy ha, HPy hb)
     status = CFI_allocate((CFI_cdesc_t *) &(C->a), lb, ub, 0);
     assert(status == CFI_SUCCESS);
 
-    C->x = m;
-    C->y = k;
-
     // matrix multiplication
     FARRAY_BINARY_CALL(farray_mm_dp,A,B,C);
     return hc;
@@ -630,8 +589,6 @@ static HPy FArray_##OP##_impl(HPyContext *ctx, HPy ha, HPy hb)         \
     assert(status == CFI_SUCCESS); \
     status = CFI_allocate((CFI_cdesc_t *) &(C->a), lb, ub, 0); \
     assert(status == CFI_SUCCESS); \
-    C->x = m; \
-    C->y = n; \
     FARRAY_BINARY_CALL(METHOD,A,B,C); \
     return hc; \
 }
@@ -643,7 +600,6 @@ FARRAY_BINARY_OP(true_divide,nb_true_divide,farray_divide_dp, CFI_type_double)
 FARRAY_BINARY_OP(remainder,nb_remainder,farray_mod_dp_dp, CFI_type_double)
 
 // FIXME: other types
-
 // FIXME: we may need to patch around this issue:
 //        https://github.com/hpyproject/hpy/issues/483
 //FARRAY_BINARY_OP(power,farray_pow_dp_dp)
@@ -663,57 +619,26 @@ static HPy FArray_richcompare_impl(HPyContext *ctx, HPy ha, HPy hb, HPy_RichCmpO
     int n = A->a.dim[1].extent;
     const CFI_index_t lb[2] = {1, 1};
     const CFI_index_t ub[2] = {m, n};
+
     int status;
     status = CFI_establish((CFI_cdesc_t *)&(C->a), NULL,  CFI_attribute_allocatable,
                         CFI_type_Bool, 0, 2, NULL);
-    assert(status == CFI_SUCCESS);
+    if (status != CFI_SUCCESS)
+        return HPy_NULL;
     status = CFI_allocate((CFI_cdesc_t *) &(C->a), lb, ub, 0);
-    assert(status == CFI_SUCCESS);
-    C->x = m;
-    C->y = n;
+    if (status != CFI_SUCCESS)
+        return HPy_NULL;
 
-    do {
-        switch (op) {
-        case HPy_EQ:
-            farray_eq_dp_dp(
-                (CFI_cdesc_t *) &(A->a),
-                (CFI_cdesc_t *) &(B->a),
-                (CFI_cdesc_t *) &(C->a));
-            break;
-        case HPy_NE:
-            farray_ne_dp_dp(
-                (CFI_cdesc_t *) &(A->a),
-                (CFI_cdesc_t *) &(B->a),
-                (CFI_cdesc_t *) &(C->a));
-            break;
-        case HPy_LT:
-            farray_lt_dp_dp(
-                (CFI_cdesc_t *) &(A->a),
-                (CFI_cdesc_t *) &(B->a),
-                (CFI_cdesc_t *) &(C->a));
-            break;
-        case HPy_GT:
-            farray_gt_dp_dp(
-                (CFI_cdesc_t *) &(A->a),
-                (CFI_cdesc_t *) &(B->a),
-                (CFI_cdesc_t *) &(C->a));
-            break;
-        case HPy_LE:
-            farray_le_dp_dp(
-                (CFI_cdesc_t *) &(A->a),
-                (CFI_cdesc_t *) &(B->a),
-                (CFI_cdesc_t *) &(C->a));
-            break;
-        case HPy_GE:
-            farray_ge_dp_dp(
-                (CFI_cdesc_t *) &(A->a),
-                (CFI_cdesc_t *) &(B->a),
-                (CFI_cdesc_t *) &(C->a));
-            break;
-        default:
-            HPy_FatalError(ctx, "Invalid value for HPy_RichCmpOp");
-        }
-    } while (0);
+    switch (op) {
+    case HPy_EQ: FARRAY_BINARY_CALL(farray_eq_dp_dp,A,B,C); break;
+    case HPy_NE: FARRAY_BINARY_CALL(farray_ne_dp_dp,A,B,C); break;
+    case HPy_LT: FARRAY_BINARY_CALL(farray_lt_dp_dp,A,B,C); break;
+    case HPy_GT: FARRAY_BINARY_CALL(farray_gt_dp_dp,A,B,C); break;
+    case HPy_LE: FARRAY_BINARY_CALL(farray_le_dp_dp,A,B,C); break;
+    case HPy_GE: FARRAY_BINARY_CALL(farray_ge_dp_dp,A,B,C); break;
+    default:
+        HPy_FatalError(ctx, "Invalid value for FArray_richcompare");
+    }
 
     return hc;
 }
@@ -722,7 +647,7 @@ static HPy FArray_richcompare_impl(HPyContext *ctx, HPy ha, HPy hb, HPy_RichCmpO
 
 // BEGIN: defines
 static HPyDef *FArray_defines[] = {
-    &FArray_z,
+    &FArray_z, // FIXME: delete z method
     &FArray_shape,
     &FArray_size,
     &FArray_transpose, // .T
