@@ -476,7 +476,7 @@ static HPy FArray_index_impl(HPyContext *ctx, HPy hx)
         case CFI_type_int64_t: result = *((int64_t *) x->a.base_addr); break;
         case CFI_type_Bool: result = *((bool *) x->a.base_addr) ? 1 : 0; break;
         default:
-            HPy_FatalError(ctx, "cfi type not implemented for int()");
+            HPy_FatalError(ctx, "cfi type not implemented for index()");
     }
     return HPyLong_FromLong(ctx, result); \
 }
@@ -514,10 +514,31 @@ static HPy FArray_invert_impl(HPyContext *ctx, HPy hx)
         farray_invert_Bool((CFI_cdesc_t *) &(x->a), (CFI_cdesc_t *) &(y->a));
         break;
     default:
-        HPy_FatalError(ctx, "cfi type not implemented for int()");
+        HPy_FatalError(ctx, "cfi type not implemented for invert()");
     }
     return hy; \
 }
+
+// HPyDef_SLOT(FArray_bool, HPy_nb_bool)
+// static int FArray_bool_impl(HPyContext *ctx, HPy hx)
+// {
+//     FArray *x = FArray_AsStruct(ctx, hx);
+//     if (x->a.rank != 0) {
+//         return HPy_NULL;
+//     }
+
+//     int result;
+//     switch(x->a.type) {
+//         case CFI_type_double: result = *((double *) x->a.base_addr) != 0.0; break;
+//         case CFI_type_float: result = *((float *) x->a.base_addr) != 0.0f; break;
+//         case CFI_type_int32_t: result = *((int32_t *) x->a.base_addr) != 0; break;
+//         case CFI_type_int64_t: result = *((int64_t *) x->a.base_addr) != 0; break;
+//         case CFI_type_Bool: result = *((bool *) x->a.base_addr); break;
+//         default:
+//             HPy_FatalError(ctx, "cfi type not implemented for bool()");
+//     }
+//     return result;
+// }
 
 HPyDef_SLOT(FArray_matrix_multiply, HPy_nb_matrix_multiply)
 static HPy FArray_matrix_multiply_impl(HPyContext *ctx, HPy ha, HPy hb)
@@ -697,6 +718,7 @@ static HPyDef *FArray_defines[] = {
     &FArray_float,
     &FArray_int,
     &FArray_index,
+//    &FArray_bool,
     &FArray_matrix_multiply,
     &FArray_add,
     &FArray_subtract,
