@@ -2,6 +2,7 @@
 #include <hpy.h>
 
 #include <math.h> // for HUGE_VAL, NAN
+#include <stdint.h> // int32_t, int64_t
 
 #include <ISO_Fortran_binding.h>
 
@@ -416,9 +417,66 @@ FARRAY_UNARY_OP(absolute,nb_absolute,farray_abs_dp,CFI_type_double)
 FARRAY_UNARY_OP(negative,nb_negative,farray_negative_dp,CFI_type_double)
 FARRAY_UNARY_OP(positive,nb_positive,farray_positive_dp,CFI_type_double)
 
-//FARRAY_UNARY_OP(float,nb_float,farray_float_dp,CFI_type_double)
-//FARRAY_UNARY_OP(index,nb_index,farray_index_dp,CFI_type_double)
-//FARRAY_UNARY_OP(int,nb_int,farray_int_dp,CFI_type_double)
+HPyDef_SLOT(FArray_float, HPy_nb_float)
+static HPy FArray_float_impl(HPyContext *ctx, HPy hx)
+{
+    FArray *x = FArray_AsStruct(ctx, hx);
+    if (x->a.rank != 0) {
+        return HPy_NULL;
+    }
+    double result;
+    switch(x->a.type) {
+        case CFI_type_double: result = *((double *) x->a.base_addr); break;
+        case CFI_type_float: result = *((float *) x->a.base_addr); break;
+        case CFI_type_int32_t: result = *((int32_t *) x->a.base_addr); break;
+        case CFI_type_int64_t: result = *((int64_t *) x->a.base_addr); break;
+        case CFI_type_Bool: result = *((bool *) x->a.base_addr) ? 1.0 : 0.0; break;
+        default:
+            HPy_FatalError(ctx, "cfi type not implemented for float()");
+    }
+    return HPyFloat_FromDouble(ctx, result); \
+}
+
+HPyDef_SLOT(FArray_int, HPy_nb_int)
+static HPy FArray_int_impl(HPyContext *ctx, HPy hx)
+{
+    FArray *x = FArray_AsStruct(ctx, hx);
+    if (x->a.rank != 0) {
+        return HPy_NULL;
+    }
+    long int result;
+    switch(x->a.type) {
+        case CFI_type_double: result = *((double *) x->a.base_addr); break;
+        case CFI_type_float: result = *((float *) x->a.base_addr); break;
+        case CFI_type_int32_t: result = *((int32_t *) x->a.base_addr); break;
+        case CFI_type_int64_t: result = *((int64_t *) x->a.base_addr); break;
+        case CFI_type_Bool: result = *((bool *) x->a.base_addr) ? 1 : 0; break;
+        default:
+            HPy_FatalError(ctx, "cfi type not implemented for int()");
+    }
+    return HPyLong_FromLong(ctx, result); \
+}
+
+HPyDef_SLOT(FArray_index, HPy_nb_index)
+static HPy FArray_index_impl(HPyContext *ctx, HPy hx)
+{
+    FArray *x = FArray_AsStruct(ctx, hx);
+    if (x->a.rank != 0) {
+        return HPy_NULL;
+    }
+    long int result;
+    switch(x->a.type) {
+        case CFI_type_double: result = *((double *) x->a.base_addr); break;
+        case CFI_type_float: result = *((float *) x->a.base_addr); break;
+        case CFI_type_int32_t: result = *((int32_t *) x->a.base_addr); break;
+        case CFI_type_int64_t: result = *((int64_t *) x->a.base_addr); break;
+        case CFI_type_Bool: result = *((bool *) x->a.base_addr) ? 1 : 0; break;
+        default:
+            HPy_FatalError(ctx, "cfi type not implemented for int()");
+    }
+    return HPyLong_FromLong(ctx, result); \
+}
+
 //FARRAY_UNARY_OP(invert,nb_invert,farray_invert_dp,CFI_type_double)
 
 HPyDef_SLOT(FArray_matrix_multiply, HPy_nb_matrix_multiply)
@@ -595,6 +653,9 @@ static HPyDef *FArray_defines[] = {
     &FArray_absolute,
     &FArray_positive,
     &FArray_negative,
+    &FArray_float,
+    &FArray_int,
+    &FArray_index,
     &FArray_matrix_multiply,
     &FArray_add,
     &FArray_subtract,
