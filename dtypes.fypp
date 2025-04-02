@@ -1,0 +1,28 @@
+
+integer, parameter :: bool_k  = c_bool
+integer, parameter :: int8_k  = c_int8_t
+integer, parameter :: int16_k = c_int16_t
+integer, parameter :: int32_k = c_int
+integer, parameter :: int64_k = c_long
+
+integer, parameter :: float32_k = c_float
+integer, parameter :: float64_k = c_double
+
+integer, parameter :: complex64_k  = c_float
+integer, parameter :: complex128_k = c_double
+
+#:if WITH_QUAD
+! quadruple precision floats
+integer, parameter :: float128_k   = 16
+integer, parameter :: complex256_k = 16
+#:endif
+
+#:if WITH_UNSIGNED
+integer, parameter :: uint8_k  = 1
+integer, parameter :: uint16_k = 2
+integer, parameter :: uint32_k = 4
+integer, parameter :: uint64_k = 8
+#:endif
+
+
+

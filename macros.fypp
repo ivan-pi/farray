@@ -1,0 +1,74 @@
+
+
+#:def UNARY_ELEM_FUNC(fname, op)
+pure subroutine farray_${fname}$ (x, y) bind(c,name="farray_${fname}$")
+use, intrinsic :: iso_c_binding, only: dp => c_double
+implicit none
+type(real(dp)), intent(in) :: x(:,:)
+type(real(dp)), intent(out) :: y(:,:)
+y = ${op}$(x)
+end subroutine
+#:enddef
+
+
+@:UNARY_ELEM_FUNC(abs, abs)
+@:UNARY_ELEM_FUNC(acos, acos)
+@:UNARY_ELEM_FUNC(acosh, acosh)
+@:UNARY_ELEM_FUNC(asin, asin)
+@:UNARY_ELEM_FUNC(asinh, asinh)
+@:UNARY_ELEM_FUNC(atan, atan)
+@:UNARY_ELEM_FUNC(atanh, atanh)
+@:UNARY_ELEM_FUNC(cos, cos)
+@:UNARY_ELEM_FUNC(cosh, cosh)
+@:UNARY_ELEM_FUNC(exp, exp)
+@:UNARY_ELEM_FUNC(log, log)
+@:UNARY_ELEM_FUNC(log10, log10)
+@:UNARY_ELEM_FUNC(negative, -)
+@:UNARY_ELEM_FUNC(positive, +)
+@:UNARY_ELEM_FUNC(reciprocal, real(1,kind(x))/)
+@:UNARY_ELEM_FUNC(sin, sinh)
+@:UNARY_ELEM_FUNC(square, x*)
+@:UNARY_ELEM_FUNC(sqrt, sqrt)
+@:UNARY_ELEM_FUNC(tan, tan)
+@:UNARY_ELEM_FUNC(tanh, tanh)
+
+
+
+#:def BINARY_ELEM_FUNC(fname, op)
+pure subroutine farray_${fname}$ (x1, x2, y) bind(c)
+use, intrinsic :: iso_c_binding, only: wp => c_double
+implicit none
+type(real(dp)), intent(in) :: x1(:,:), x2(:,:)
+type(real(dp)), intent(out) :: y(:,:)
+y = ${op}$(x1, x2)
+end subroutine
+#:enddef
+
+#:def BINARY_ELEM_OP(fname, op)
+subroutine farray_${fname}$ (x1, x2, y) bind(c)
+use, intrinsic :: iso_c_binding, only: wp => c_double
+implicit none
+type(real(dp)), intent(in) :: x1(:,:), x2(:,:)
+type(real(dp)), intent(out) :: y(:,:)
+y = x1 ${op}$ x2
+end subroutine
+#:enddef
+
+@:BINARY_ELEM_OP(add,+)
+@:BINARY_ELEM_OP(subtract,-)
+@:BINARY_ELEM_OP(multiply,*)
+@:BINARY_ELEM_OP(divide,/)
+@:BINARY_ELEM_OP(pow,**)
+
+@:BINARY_ELEM_FUNC(atan2,atan2)
+@:BINARY_ELEM_FUNC(hypot,hypot)
+@:BINARY_ELEM_FUNC(maximum, max)
+@:BINARY_ELEM_FUNC(minimum, min)
+@:BINARY_ELEM_FUNC(remainder, mod)
+
+
+!
+! Linear algebra
+!
+@:UNARY_ELEM_FUNC(transpose, transpose)
+@:BINARY_ELEM_FUNC(matmul, matmul)
