@@ -1,9 +1,9 @@
 subroutine farray_mm_dp(a,b,c) bind(c)
     use, intrinsic :: iso_c_binding, only: c_double
     implicit none
-    real(c_double), intent(in) :: A(:,:), B(:,:)
-    real(c_double), intent(out) :: C(:,:)
-    C = matmul(A,B)
+    real(c_double), intent(in) :: a(:,:), b(:,:)
+    real(c_double), intent(out) :: c(:,:)
+    c = matmul(a,b)
 end subroutine
 
 subroutine farray_transpose_dp(x,y) bind(c)

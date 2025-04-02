@@ -44,28 +44,29 @@ y = ${op}$(x1, x2)
 end subroutine
 #:enddef
 
-#:def BINARY_ELEM_OP(fname, op)
+#:def BINARY_ELEM_OP(fname, op, xtype, ytype)
 subroutine farray_${fname}$ (x1, x2, y) bind(c)
-use, intrinsic :: iso_c_binding, only: wp => c_double
+use, intrinsic :: iso_c_binding
 implicit none
-type(real(dp)), intent(in) :: x1(:,:), x2(:,:)
-type(real(dp)), intent(out) :: y(:,:)
+type(${xtype}$), intent(in) :: x1(:,:), x2(:,:)
+type(${ytype}$), intent(out) :: y(:,:)
 y = x1 ${op}$ x2
 end subroutine
 #:enddef
 
-@:BINARY_ELEM_OP(add,+)
-@:BINARY_ELEM_OP(subtract,-)
-@:BINARY_ELEM_OP(multiply,*)
-@:BINARY_ELEM_OP(divide,/)
-@:BINARY_ELEM_OP(pow,**)
+#:for s, t in [("float32","real(c_float)"), ("float64","real(c_double)")]
+@:BINARY_ELEM_OP(add_${s}$,+,       ${t}$,${t}$)
+@:BINARY_ELEM_OP(subtract_${s}$,-,  ${t}$,${t}$)
+@:BINARY_ELEM_OP(multiply_${s}$,*,  ${t}$,${t}$)
+@:BINARY_ELEM_OP(divide_${s}$,/,    ${t}$,${t}$)
+@:BINARY_ELEM_OP(pow_${s}$,**,      ${t}$,${t}$)
+#:endfor
 
 @:BINARY_ELEM_FUNC(atan2,atan2)
 @:BINARY_ELEM_FUNC(hypot,hypot)
 @:BINARY_ELEM_FUNC(maximum, max)
 @:BINARY_ELEM_FUNC(minimum, min)
 @:BINARY_ELEM_FUNC(remainder, mod)
-
 
 !
 ! Linear algebra
