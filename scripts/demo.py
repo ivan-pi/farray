@@ -23,3 +23,6 @@ print(d.shape)
 
 r = far.ones((4,5))
 print(r.shape)
+
+z = far.zeros_like(r)
+print(z.shape)
