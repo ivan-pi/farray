@@ -363,3 +363,9 @@ subroutine farray_ones_dp(y) bind(c)
     real(c_double), intent(out) :: y(:,:)
     y = 1.0_c_double
 end subroutine
+
+subroutine farray_zeros_dp(y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double
+    real(c_double), intent(out) :: y(:,:)
+    y = 0.0_c_double
+end subroutine
