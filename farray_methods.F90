@@ -356,3 +356,10 @@ subroutine farray_xor_Bool(x1,x2,y) bind(c)
     logical(c_bool), intent(out) :: y(:,:)
     y = x1 .neqv. x2
 end subroutine
+
+
+subroutine farray_ones_dp(y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double
+    real(c_double), intent(out) :: y(:,:)
+    y = 1.0_c_double
+end subroutine
