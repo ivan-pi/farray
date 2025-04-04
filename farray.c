@@ -113,13 +113,9 @@ typedef struct {
 HPyType_HELPERS(FArray)
 // END: FArray
 
-static inline CFI_cdesc_t* FArray_get_descriptor(HPyContext *ctx, HPy self) {
-    FArray *tmp = FArray_AsStruct(ctx,self);
-    return (CFI_cdesc_t *) &(tmp->a);
-}
 
 // Create a new empty array Y with the same properties as X
-int FArray_new_like(const FArray *X, FArray *Y) {
+static int FArray_new_like(const FArray *X, FArray *Y) {
 
     CFI_index_t lb[FARRAY_MAX_RANK];
     CFI_index_t ub[FARRAY_MAX_RANK];
@@ -132,6 +128,56 @@ int FArray_new_like(const FArray *X, FArray *Y) {
     status = CFI_establish(FARRAY_CAST(Y), NULL, CFI_attribute_allocatable,
                         X->a.type, 0, X->a.rank, NULL);
 
+    if (status == CFI_SUCCESS) {
+        status = CFI_allocate(FARRAY_CAST(Y), lb, ub, 0);
+    }
+    return status;
+}
+
+// Create a new empty array Y with the same properties as X
+static int FArray_new_allocatable(
+        CFI_type_t type,
+        int rank,
+        const CFI_index_t extent[],
+        FArray *Y) {
+
+    assert(rank <= FARRAY_MAX_RANK);
+
+    CFI_index_t lb[FARRAY_MAX_RANK];
+    CFI_index_t ub[FARRAY_MAX_RANK];
+    for (int k = 0; k < rank; k++) {
+        lb[k] = 1;
+        ub[k] = extent[k];
+    }
+
+    int status;
+    status = CFI_establish(FARRAY_CAST(Y), NULL, CFI_attribute_allocatable,
+                        type, 0, rank, NULL);
+    if (status == CFI_SUCCESS) {
+        status = CFI_allocate(FARRAY_CAST(Y), lb, ub, 0);
+    }
+    return status;
+}
+
+// Create a new empty array Y with the same properties as X
+static int FArray_new_pointer(
+        CFI_type_t type,
+        int rank,
+        const CFI_index_t extent[],
+        FArray *Y) {
+
+    assert(rank <= FARRAY_MAX_RANK);
+
+    CFI_index_t lb[FARRAY_MAX_RANK];
+    CFI_index_t ub[FARRAY_MAX_RANK];
+    for (int k = 0; k < rank; k++) {
+        lb[k] = 1;
+        ub[k] = extent[k];
+    }
+
+    int status;
+    status = CFI_establish(FARRAY_CAST(Y), NULL, CFI_attribute_pointer,
+                        type, 0, rank, NULL);
     if (status == CFI_SUCCESS) {
         status = CFI_allocate(FARRAY_CAST(Y), lb, ub, 0);
     }
@@ -399,16 +445,9 @@ static HPy FArray_new_impl(HPyContext *ctx, HPy cls, const HPy *args,
         return HPy_NULL;
     }
 
-    const CFI_index_t lb[2] = {1, 1};
     const CFI_index_t ub[2] = {(CFI_index_t) x, (CFI_index_t) y};
 
-    int status;
-    status = CFI_establish((CFI_cdesc_t *)&(arr->a), NULL,  CFI_attribute_allocatable,
-                        CFI_type_double, 0, 2, NULL);
-    assert(status == CFI_SUCCESS);
-
-    status = CFI_allocate((CFI_cdesc_t *) &(arr->a), lb, ub, 0);
-    assert(status == CFI_SUCCESS);
+    int status = FArray_new_allocatable(CFI_type_double, 2, ub, arr);
 
     return h_arr;
 }
@@ -425,15 +464,7 @@ static HPy FArray_##OP##_impl(HPyContext *ctx, HPy hx)         \
     if (HPy_IsNull(hy)) { \
         return HPy_NULL; \
     } \
-    int m = x->a.dim[0].extent; \
-    int n = x->a.dim[1].extent; \
-    const CFI_index_t lb[2] = {1, 1}; \
-    const CFI_index_t ub[2] = {m, n}; \
-    int status; \
-    status = CFI_establish((CFI_cdesc_t *)&(y->a), NULL,  CFI_attribute_allocatable, \
-                        RESULT_TYPE, 0, x->a.rank, NULL); \
-    if (status != CFI_SUCCESS) return HPy_NULL; \
-    status = CFI_allocate((CFI_cdesc_t *) &(y->a), lb, ub, 0); \
+    int status = FArray_new_like(x, y); \
     if (status != CFI_SUCCESS) return HPy_NULL; \
     FARRAY_UNARY_CALL(METHOD,x,y); \
     return hy; \
@@ -514,16 +545,11 @@ static HPy FArray_invert_impl(HPyContext *ctx, HPy hx)
     if (HPy_IsNull(hy)) {
         return HPy_NULL;
     }
-    int m = x->a.dim[0].extent;
-    int n = x->a.dim[1].extent;
-    const CFI_index_t lb[2] = {1, 1};
-    const CFI_index_t ub[2] = {m, n};
-    int status; \
-    status = CFI_establish((CFI_cdesc_t *)&(y->a), NULL,  CFI_attribute_allocatable,
-                        x->a.type, 0, x->a.rank, NULL);
-    if (status != CFI_SUCCESS) return HPy_NULL;
-    status = CFI_allocate((CFI_cdesc_t *) &(y->a), lb, ub, 0);
-    if (status != CFI_SUCCESS) return HPy_NULL;
+
+    int stat = FArray_new_like(x,y);
+    if (stat != CFI_SUCCESS) {
+        return HPy_NULL;
+    }
 
     switch(x->a.type) {
     case CFI_type_int32_t: FARRAY_UNARY_CALL(farray_invert_int32_t,x,y); break;
@@ -577,19 +603,14 @@ static HPy FArray_matrix_multiply_impl(HPyContext *ctx, HPy ha, HPy hb)
         // shape mismatch, inner dimension does not agree
         return HPy_NULL;
     }
-
     int k = B->a.dim[1].extent;
 
-    const CFI_index_t lb[2] = {1, 1};
     const CFI_index_t ub[2] = {m, k};
 
-    int status;
-    status = CFI_establish((CFI_cdesc_t *)&(C->a), NULL,  CFI_attribute_allocatable,
-                        CFI_type_double, 0, 2, NULL);
-    assert(status == CFI_SUCCESS);
-
-    status = CFI_allocate((CFI_cdesc_t *) &(C->a), lb, ub, 0);
-    assert(status == CFI_SUCCESS);
+    int status = FArray_new_allocatable(CFI_type_double, 2, ub, C);
+    if (status != CFI_SUCCESS) {
+        return HPy_NULL;
+    }
 
     // matrix multiplication
     FARRAY_BINARY_CALL(farray_mm_dp,A,B,C);
@@ -608,16 +629,7 @@ static HPy FArray_##OP##_impl(HPyContext *ctx, HPy ha, HPy hb)         \
     if (HPy_IsNull(hc)) { \
         return HPy_NULL; \
     } \
-    int m = A->a.dim[0].extent; \
-    int n = A->a.dim[1].extent; \
-    const CFI_index_t lb[2] = {1, 1}; \
-    const CFI_index_t ub[2] = {m, n}; \
-    int status; \
-    status = CFI_establish((CFI_cdesc_t *)&(C->a), NULL,  CFI_attribute_allocatable, \
-                        RESULT_TYPE, 0, 2, NULL); \
-    assert(status == CFI_SUCCESS); \
-    status = CFI_allocate((CFI_cdesc_t *) &(C->a), lb, ub, 0); \
-    assert(status == CFI_SUCCESS); \
+    int status = FArray_new_like(A, C); \
     FARRAY_BINARY_CALL(METHOD,A,B,C); \
     return hc; \
 }
@@ -644,19 +656,15 @@ static HPy FArray_richcompare_impl(HPyContext *ctx, HPy ha, HPy hb, HPy_RichCmpO
     if (HPy_IsNull(hc)) {
         return HPy_NULL;
     }
+
     int m = A->a.dim[0].extent;
     int n = A->a.dim[1].extent;
-    const CFI_index_t lb[2] = {1, 1};
     const CFI_index_t ub[2] = {m, n};
 
-    int status;
-    status = CFI_establish((CFI_cdesc_t *)&(C->a), NULL,  CFI_attribute_allocatable,
-                        CFI_type_Bool, 0, 2, NULL);
-    if (status != CFI_SUCCESS)
+    int status = FArray_new_allocatable(CFI_type_Bool, 2, ub, C);
+    if (status != CFI_SUCCESS) {
         return HPy_NULL;
-    status = CFI_allocate((CFI_cdesc_t *) &(C->a), lb, ub, 0);
-    if (status != CFI_SUCCESS)
-        return HPy_NULL;
+    }
 
     switch (op) {
     case HPy_EQ: FARRAY_BINARY_CALL(farray_eq_dp_dp,A,B,C); break;
@@ -759,25 +767,11 @@ static HPy ones_impl(HPyContext *ctx, HPy self, HPy shape)
         return HPy_NULL;
     }
 
-    // Now the handle is formed, we can do transpose
-
-    int status;
-    status = CFI_establish(
-        (CFI_cdesc_t *) &(A->a), NULL,  CFI_attribute_allocatable,
-        CFI_type_double, 0, (CFI_rank_t) rank, NULL);
-    if (status != CFI_SUCCESS) {
-        HPy_FatalError(ctx, "CFI_establish failed");
-        return HPy_NULL;
-    }
-
-    CFI_index_t lb[FARRAY_MAX_RANK];
     CFI_index_t ub[FARRAY_MAX_RANK];
     for (int k = 0; k < rank; k++) {
-        lb[k] = 1;
         ub[k] = HPyLong_AsInt32_t(ctx,HPy_GetItem_i(ctx,shape,k));
     }
-
-    status = CFI_allocate(FARRAY_CAST(A), lb, ub, 0);
+    int status = FArray_new_allocatable(CFI_type_double,2,ub,A);
     if (status != CFI_SUCCESS) {
         HPy_FatalError(ctx, "CFI_allocate failed");
         return HPy_NULL;
@@ -800,6 +794,7 @@ static HPy ones_like_impl(HPyContext *ctx, HPy self, HPy hx)
         return HPy_NULL;
     }
 
+    // FIXME: report failure reason
     if (!FArray_new_like(X,Y)) {
         farray_ones_dp(FARRAY_CAST(Y));
     } else {
@@ -839,27 +834,13 @@ static HPy zeros_impl(HPyContext *ctx, HPy self, HPy shape)
         return HPy_NULL;
     }
 
-    // Now the handle is formed, we can do transpose
-
-    int status;
-    status = CFI_establish(
-        (CFI_cdesc_t *) &(A->a), NULL,  CFI_attribute_allocatable,
-        CFI_type_double, 0, (CFI_rank_t) rank, NULL);
-    if (status != CFI_SUCCESS) {
-        HPy_FatalError(ctx, "CFI_establish failed");
-        return HPy_NULL;
-    }
-
-    CFI_index_t lb[FARRAY_MAX_RANK];
     CFI_index_t ub[FARRAY_MAX_RANK];
     for (int k = 0; k < rank; k++) {
-        lb[k] = 1;
         ub[k] = HPyLong_AsInt32_t(ctx,HPy_GetItem_i(ctx,shape,k));
     }
 
-    status = CFI_allocate(FARRAY_CAST(A), lb, ub, 0);
+    int status = FArray_new_allocatable(CFI_type_double, rank, ub, A);
     if (status != CFI_SUCCESS) {
-        HPy_FatalError(ctx, "CFI_allocate failed");
         return HPy_NULL;
     }
 
@@ -1015,6 +996,10 @@ static HPy eye_impl(HPyContext *ctx, HPy self, HPy hnrows)
 
     return hA;
 }
+
+
+// FIXME: how do we expose constants as Python extension module
+// entities. Or should we just create them in Python?
 
 const double farray_e   = 2.7182818284590452353602874;
 const double farray_inf = HUGE_VAL;
