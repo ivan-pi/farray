@@ -900,25 +900,12 @@ static HPy empty_impl(HPyContext *ctx, HPy self, HPy shape)
         return HPy_NULL;
     }
 
-    // Now the handle is formed, we can do transpose
-
-    int status;
-    status = CFI_establish(
-        (CFI_cdesc_t *) &(A->a), NULL,  CFI_attribute_allocatable,
-        CFI_type_double, 0, (CFI_rank_t) rank, NULL);
-    if (status != CFI_SUCCESS) {
-        HPy_FatalError(ctx, "CFI_establish failed");
-        return HPy_NULL;
-    }
-
-    CFI_index_t lb[FARRAY_MAX_RANK];
     CFI_index_t ub[FARRAY_MAX_RANK];
     for (int k = 0; k < rank; k++) {
-        lb[k] = 1;
         ub[k] = HPyLong_AsInt32_t(ctx,HPy_GetItem_i(ctx,shape,k));
     }
 
-    status = CFI_allocate(FARRAY_CAST(A), lb, ub, 0);
+    int status = FArray_new_allocatable(CFI_type_double, rank, ub, A);
     if (status != CFI_SUCCESS) {
         HPy_FatalError(ctx, "CFI_allocate failed");
         return HPy_NULL;
@@ -967,27 +954,15 @@ static HPy eye_impl(HPyContext *ctx, HPy self, HPy hnrows)
         return HPy_NULL;
     }
 
-    // FIXME: generalize type based on dtype
-
-    int status;
-    status = CFI_establish(
-        (CFI_cdesc_t *) &(A->a), NULL,  CFI_attribute_allocatable,
-        CFI_type_double, 0, 2, NULL);
-    if (status != CFI_SUCCESS) {
-        HPy_FatalError(ctx, "CFI_establish failed");
-        return HPy_NULL;
-    }
-
-    CFI_index_t lb[FARRAY_MAX_RANK];
+    // FIXME: add ncols
     CFI_index_t ub[FARRAY_MAX_RANK];
     for (int k = 0; k < 2; k++) {
-        lb[k] = 1;
         ub[k] = nrows;
     }
 
-    status = CFI_allocate(FARRAY_CAST(A), lb, ub, 0);
+    // FIXME: generalize type based on passed dtype
+    int status = FArray_new_allocatable(CFI_type_double, 2, ub, A);
     if (status != CFI_SUCCESS) {
-        HPy_FatalError(ctx, "CFI_allocate failed");
         return HPy_NULL;
     }
 
