@@ -889,6 +889,61 @@ static HPy zeros_like_impl(HPyContext *ctx, HPy self, HPy hx)
     return hy;
 }
 
+// FIXME: this should be a varargs functions
+HPyDef_METH(empty, "empty", HPyFunc_O)
+static HPy empty_impl(HPyContext *ctx, HPy self, HPy shape)
+{
+
+    if (!HPyTuple_Check(ctx, shape)) {
+        HPyErr_SetString(ctx, ctx->h_TypeError,"shape must be a tuple");
+        return HPy_NULL;
+    }
+
+    HPy_ssize_t rank = HPy_Length(ctx,shape);
+    if (rank > FARRAY_MAX_RANK) {
+        HPyErr_SetString(ctx, ctx->h_TypeError,
+            "len(shape) exceeds maximum supported rank (" xstr(FARRAY_MAX_RANK) ")");
+        return HPy_NULL;
+    }
+
+    // FIXME: perhaps we should retrieve the type from the context instead?
+    HPy cls = HPyType_FromSpec(ctx,&FArray_spec ,NULL);
+    if (HPy_IsNull(cls)) {
+        return HPy_NULL;
+    }
+
+    FArray *A;
+    HPy hA = HPy_New(ctx, cls, &A);
+    if (HPy_IsNull(hA)) {
+        return HPy_NULL;
+    }
+
+    // Now the handle is formed, we can do transpose
+
+    int status;
+    status = CFI_establish(
+        (CFI_cdesc_t *) &(A->a), NULL,  CFI_attribute_allocatable,
+        CFI_type_double, 0, (CFI_rank_t) rank, NULL);
+    if (status != CFI_SUCCESS) {
+        HPy_FatalError(ctx, "CFI_establish failed");
+        return HPy_NULL;
+    }
+
+    CFI_index_t lb[FARRAY_MAX_RANK];
+    CFI_index_t ub[FARRAY_MAX_RANK];
+    for (int k = 0; k < rank; k++) {
+        lb[k] = 1;
+        ub[k] = HPyLong_AsInt32_t(ctx,HPy_GetItem_i(ctx,shape,k));
+    }
+
+    status = CFI_allocate(FARRAY_CAST(A), lb, ub, 0);
+    if (status != CFI_SUCCESS) {
+        HPy_FatalError(ctx, "CFI_allocate failed");
+        return HPy_NULL;
+    }
+
+    return hA;
+}
 
 // FIXME: this should be a varargs functions
 HPyDef_METH(empty_like, "empty_like", HPyFunc_O)
@@ -923,6 +978,7 @@ static HPyDef *mod_defines[] = {
     &ones_like,
     &zeros,
     &zeros_like,
+    &empty,
     &empty_like,
     &allocated,
     &elem_abs,
