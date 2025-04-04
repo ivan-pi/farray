@@ -87,6 +87,7 @@ extern void farray_ne_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cd
 
 extern void farray_ones_dp(CFI_cdesc_t *y);
 extern void farray_zeros_dp(CFI_cdesc_t *y);
+extern void farray_eye_dp(CFI_cdesc_t *y);
 
 
 #define FARRAY_CAST(X) ((CFI_cdesc_t *) &((X)->a))
@@ -966,6 +967,55 @@ static HPy empty_like_impl(HPyContext *ctx, HPy self, HPy hx)
 }
 
 
+// FIXME: this should be a varargs functions
+HPyDef_METH(eye, "eye", HPyFunc_O)
+static HPy eye_impl(HPyContext *ctx, HPy self, HPy hnrows)
+{
+
+    int nrows = HPyLong_AsInt32_t(ctx,hnrows);
+
+    // FIXME: perhaps we should retrieve the type from the context instead?
+    HPy cls = HPyType_FromSpec(ctx,&FArray_spec ,NULL);
+    if (HPy_IsNull(cls)) {
+        return HPy_NULL;
+    }
+
+    FArray *A;
+    HPy hA = HPy_New(ctx, cls, &A);
+    if (HPy_IsNull(hA)) {
+        return HPy_NULL;
+    }
+
+    // FIXME: generalize type based on dtype
+
+    int status;
+    status = CFI_establish(
+        (CFI_cdesc_t *) &(A->a), NULL,  CFI_attribute_allocatable,
+        CFI_type_double, 0, 2, NULL);
+    if (status != CFI_SUCCESS) {
+        HPy_FatalError(ctx, "CFI_establish failed");
+        return HPy_NULL;
+    }
+
+    CFI_index_t lb[FARRAY_MAX_RANK];
+    CFI_index_t ub[FARRAY_MAX_RANK];
+    for (int k = 0; k < 2; k++) {
+        lb[k] = 1;
+        ub[k] = nrows;
+    }
+
+    status = CFI_allocate(FARRAY_CAST(A), lb, ub, 0);
+    if (status != CFI_SUCCESS) {
+        HPy_FatalError(ctx, "CFI_allocate failed");
+        return HPy_NULL;
+    }
+
+    // Set diagonal to zero
+    farray_eye_dp(FARRAY_CAST(A));
+
+    return hA;
+}
+
 const double farray_e   = 2.7182818284590452353602874;
 const double farray_inf = HUGE_VAL;
 const double farray_nan = NAN;
@@ -980,6 +1030,7 @@ static HPyDef *mod_defines[] = {
     &zeros_like,
     &empty,
     &empty_like,
+    &eye,
     &allocated,
     &elem_abs,
     &capabilities, /* dictionary */

@@ -369,3 +369,13 @@ subroutine farray_zeros_dp(y) bind(c)
     real(c_double), intent(out) :: y(:,:)
     y = 0.0_c_double
 end subroutine
+
+subroutine farray_eye_dp(y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double
+    real(c_double), intent(out) :: y(:,:)
+    integer :: i
+    y = 0.0_c_double
+    do i = 1, size(y,1)
+        y(i,i) = 0.0_c_double
+    end do
+end subroutine
