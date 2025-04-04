@@ -117,7 +117,7 @@ static inline CFI_cdesc_t* FArray_get_descriptor(HPyContext *ctx, HPy self) {
     return (CFI_cdesc_t *) &(tmp->a);
 }
 
-// Create a new array Y with the same properties as X
+// Create a new empty array Y with the same properties as X
 int FArray_new_like(const FArray *X, FArray *Y) {
 
     CFI_index_t lb[FARRAY_MAX_RANK];
@@ -890,6 +890,27 @@ static HPy zeros_like_impl(HPyContext *ctx, HPy self, HPy hx)
 }
 
 
+// FIXME: this should be a varargs functions
+HPyDef_METH(empty_like, "empty_like", HPyFunc_O)
+static HPy empty_like_impl(HPyContext *ctx, HPy self, HPy hx)
+{
+    FArray *X = FArray_AsStruct(ctx,hx);
+
+    FArray *Y;
+    HPy hy = HPy_New(ctx,HPy_Type(ctx,hx), &Y);
+    if (HPy_IsNull(hy)) {
+        return HPy_NULL;
+    }
+
+    if (FArray_new_like(X,Y)) {
+        HPyErr_SetString(ctx, ctx->h_RuntimeError,
+            "empty_like failed due for CFI reasons");
+        return HPy_NULL;
+    }
+    return hy;
+}
+
+
 const double farray_e   = 2.7182818284590452353602874;
 const double farray_inf = HUGE_VAL;
 const double farray_nan = NAN;
@@ -902,6 +923,7 @@ static HPyDef *mod_defines[] = {
     &ones_like,
     &zeros,
     &zeros_like,
+    &empty_like,
     &allocated,
     &elem_abs,
     &capabilities, /* dictionary */
