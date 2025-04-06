@@ -376,6 +376,6 @@ subroutine farray_eye_dp(y) bind(c)
     integer :: i
     y = 0.0_c_double
     do i = 1, size(y,1)
-        y(i,i) = 0.0_c_double
+        y(i,i) = 1.0_c_double
     end do
 end subroutine
