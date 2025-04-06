@@ -370,12 +370,24 @@ subroutine farray_zeros_dp(y) bind(c)
     y = 0.0_c_double
 end subroutine
 
-subroutine farray_eye_dp(y) bind(c)
-    use, intrinsic :: iso_c_binding, only: c_double
+subroutine farray_eye_dp(y,k) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_long
     real(c_double), intent(out) :: y(:,:)
+    integer(c_long), intent(in) :: k
     integer :: i
+
+    integer :: m, n
+
+    m = size(y,1)
+    n = size(y,2)
+
+
     y = 0.0_c_double
-    do i = 1, size(y,1)
-        y(i,i) = 1.0_c_double
-    end do
+    if (k /= 0) then
+        error stop "Not implemented"
+    else
+        do i = 1, min(m,n)
+            y(i,i) = 1.0_c_double
+        end do
+    end if
 end subroutine

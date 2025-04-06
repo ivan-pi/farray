@@ -87,7 +87,7 @@ extern void farray_ne_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cd
 
 extern void farray_ones_dp(CFI_cdesc_t *y);
 extern void farray_zeros_dp(CFI_cdesc_t *y);
-extern void farray_eye_dp(CFI_cdesc_t *y);
+extern void farray_eye_dp(CFI_cdesc_t *y, const long *k);
 
 
 #define FARRAY_CAST(X) ((CFI_cdesc_t *) &((X)->a))
@@ -936,11 +936,22 @@ static HPy empty_like_impl(HPyContext *ctx, HPy self, HPy hx)
 
 
 // FIXME: this should be a varargs functions
-HPyDef_METH(eye, "eye", HPyFunc_O)
-static HPy eye_impl(HPyContext *ctx, HPy self, HPy hnrows)
+HPyDef_METH(eye, "eye", HPyFunc_KEYWORDS)
+static HPy eye_impl(HPyContext *ctx, HPy self, const HPy *args, size_t nargs, HPy kwnames)
 {
+    static const char *keywords[] = {"", "", "k", "dtype", "device", NULL };
 
-    int nrows = HPyLong_AsInt32_t(ctx,hnrows);
+    long nrows;
+    HPy hncols = HPy_NULL;
+    long k = 0;
+    HPy hdtype = HPy_NULL;
+    HPy hdevice = HPy_NULL;
+
+    HPyTracker ht;
+    if (!HPyArg_ParseKeywords(ctx,&ht,args,nargs,kwnames,
+        "l|O$kOO:eye",keywords,&nrows,&hncols,&k,&hdtype,&hdevice)) {
+        return HPy_NULL;
+    }
 
     // FIXME: perhaps we should retrieve the type from the context instead?
     HPy cls = HPyType_FromSpec(ctx,&FArray_spec ,NULL);
@@ -954,10 +965,13 @@ static HPy eye_impl(HPyContext *ctx, HPy self, HPy hnrows)
         return HPy_NULL;
     }
 
-    // FIXME: add ncols
-    CFI_index_t ub[FARRAY_MAX_RANK];
-    for (int k = 0; k < 2; k++) {
-        ub[k] = nrows;
+    CFI_index_t ub[2];
+    if (HPy_IsNull(hncols)) {
+        ub[0] = nrows;
+        ub[1] = nrows;
+    } else {
+        ub[0] = nrows;
+        ub[1] = HPyLong_AsInt32_t(ctx,hncols);
     }
 
     // FIXME: generalize type based on passed dtype
@@ -967,7 +981,7 @@ static HPy eye_impl(HPyContext *ctx, HPy self, HPy hnrows)
     }
 
     // Set diagonal to zero
-    farray_eye_dp(FARRAY_CAST(A));
+    farray_eye_dp(FARRAY_CAST(A), &k);
 
     return hA;
 }
