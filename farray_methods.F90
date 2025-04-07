@@ -370,10 +370,10 @@ subroutine farray_zeros_dp(y) bind(c)
     y = 0.0_c_double
 end subroutine
 
-subroutine farray_eye_dp(y,k) bind(c)
+subroutine farray_eye_dp(k,y) bind(c)
     use, intrinsic :: iso_c_binding, only: c_double, c_long
+    integer(c_long), intent(in), value :: k
     real(c_double), intent(out) :: y(:,:)
-    integer(c_long), intent(in) :: k
     integer :: i
 
     integer :: m, n
@@ -390,4 +390,24 @@ subroutine farray_eye_dp(y,k) bind(c)
             y(i,i) = 1.0_c_double
         end do
     end if
+end subroutine
+
+subroutine farray_tril_dp(x,k,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_long
+    real(c_double), intent(in) :: x(:,:)
+    integer(c_long), intent(in), value :: k
+    real(c_double), intent(out) :: y(:,:)
+
+    y = 0
+    error stop "Not implemented error"
+end subroutine
+
+subroutine farray_triu_dp(x,k,y) bind(c)
+    use, intrinsic :: iso_c_binding, only: c_double, c_long
+    real(c_double), intent(in) :: x(:,:)
+    integer(c_long), intent(in), value :: k
+    real(c_double), intent(out) :: y(:,:)
+
+    y = 0
+    error stop "Not implemented error"
 end subroutine

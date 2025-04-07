@@ -87,15 +87,26 @@ extern void farray_ne_dp_dp(const CFI_cdesc_t *x1, const CFI_cdesc_t* x2, CFI_cd
 
 extern void farray_ones_dp(CFI_cdesc_t *y);
 extern void farray_zeros_dp(CFI_cdesc_t *y);
-extern void farray_eye_dp(CFI_cdesc_t *y, const long *k);
+extern void farray_eye_dp(long k, CFI_cdesc_t *y);
+
+extern void farray_tril_dp(const CFI_cdesc_t *x, long k, CFI_cdesc_t *y);
+extern void farray_triu_dp(const CFI_cdesc_t *x, long k, CFI_cdesc_t *y);
+
+extern void farray_permute_dims_2_dp(int order[2], const CFI_cdesc_t *x, CFI_cdesc_t *y);
 
 
-#define FARRAY_CAST(X) ((CFI_cdesc_t *) &((X)->a))
 
-#define FARRAY_UNARY_CALL(FUNC,X,Y) \
-    FUNC(FARRAY_CAST(X), FARRAY_CAST(Y))
-#define FARRAY_BINARY_CALL(FUNC,X1,X2,Y) \
-    FUNC(FARRAY_CAST(X1), FARRAY_CAST(X2), FARRAY_CAST(Y))
+static int shape_to_extent(HPyContext *ctx, HPy shape, CFI_index_t extent[]) {
+    if (HPyTuple_Check(ctx,shape)) {
+        int rank = HPy_Length(ctx,shape);
+        for (int k = 0; k < rank; k++) {
+            extent[k] = HPyLong_AsInt32_t(ctx,HPy_GetItem_i(ctx,shape,k));
+        }
+        return 0;
+    } else {
+        return 1;
+    }
+}
 
 // BEGIN: dtype
 typedef struct {
@@ -112,6 +123,16 @@ typedef struct {
 } FArray;
 HPyType_HELPERS(FArray)
 // END: FArray
+
+
+#define FARRAY_CAST(X) ((CFI_cdesc_t *) &((X)->a))
+#define FARRAY_TYPE(X) ((X)->a.type)
+#define FARRAY_RANK(X) ((X)->a.rank)
+
+#define FARRAY_UNARY_CALL(FUNC,X,Y) \
+    FUNC(FARRAY_CAST(X), FARRAY_CAST(Y))
+#define FARRAY_BINARY_CALL(FUNC,X1,X2,Y) \
+    FUNC(FARRAY_CAST(X1), FARRAY_CAST(X2), FARRAY_CAST(Y))
 
 
 // Create a new empty array Y with the same properties as X
@@ -935,7 +956,6 @@ static HPy empty_like_impl(HPyContext *ctx, HPy self, HPy hx)
 }
 
 
-// FIXME: this should be a varargs functions
 HPyDef_METH(eye, "eye", HPyFunc_KEYWORDS)
 static HPy eye_impl(HPyContext *ctx, HPy self, const HPy *args, size_t nargs, HPy kwnames)
 {
@@ -981,11 +1001,110 @@ static HPy eye_impl(HPyContext *ctx, HPy self, const HPy *args, size_t nargs, HP
     }
 
     // Set diagonal to zero
-    farray_eye_dp(FARRAY_CAST(A), &k);
+    farray_eye_dp(k, FARRAY_CAST(A));
 
     return hA;
 }
 
+// FIXME: this should be a varargs functions
+HPyDef_METH(reshape, "reshape", HPyFunc_KEYWORDS)
+static HPy reshape_impl(HPyContext *ctx, HPy self, const HPy *args, size_t nargs, HPy kwnames)
+{
+    static const char *keywords[] = {"", "shape", "copy", NULL };
+
+    HPy hx;
+    HPy hshape;
+    HPy hcopy = HPy_NULL;
+
+    HPyTracker ht;
+    if (!HPyArg_ParseKeywords(ctx,&ht,args,nargs,kwnames,
+        "OO$O:reshape",keywords,&hx,&hshape,&hcopy)) {
+        return HPy_NULL;
+    }
+
+    FArray *x = FArray_AsStruct(ctx,hx);
+    FArray *y;
+    HPy hy = HPy_New(ctx, HPy_Type(ctx,hx), &y);
+    if (HPy_IsNull(hy)) {
+        return HPy_NULL;
+    }
+
+    int new_rank = HPy_Length(ctx,hshape);
+
+    CFI_index_t extent[FARRAY_MAX_RANK];
+    if (!shape_to_extent(ctx,hshape,extent)) {
+        HPyErr_SetString(ctx,ctx->h_RuntimeError, "expected tuple as shape argument");
+        return HPy_NULL;
+    }
+
+    // FIXME: check shape is compatible
+
+    // FIXME: generalize type based on passed dtype
+    if (HPy_IsNull(hcopy)) {
+        // avoid copying
+        // FIXME: not implemented
+        return HPy_NULL;
+    } else {
+        bool copy = HPy_IsTrue(ctx,hcopy);
+        if (copy) {
+            int status = FArray_new_allocatable(x->a.type, new_rank, extent, y);
+            if (status != CFI_SUCCESS) {
+                return HPy_NULL;
+            }
+        } else {
+            // FIXME: not implemented
+            return HPy_NULL;
+        }
+    }
+
+    return hy;
+}
+
+// FIXME: this should be a varargs functions
+HPyDef_METH(permute_dims, "permute_dims", HPyFunc_KEYWORDS)
+static HPy permute_dims_impl(HPyContext *ctx, HPy self, const HPy *args, size_t nargs, HPy kwnames)
+{
+    static const char *keywords[] = {"", "axes", NULL };
+
+    HPy hx;
+    HPy haxes;
+
+    HPyTracker ht;
+    if (!HPyArg_ParseKeywords(ctx,&ht,args,nargs,kwnames,
+        "OO",keywords,&hx,&haxes)) {
+        return HPy_NULL;
+    }
+
+    if (!HPyTuple_Check(ctx,haxes)) {
+        return HPy_NULL;
+    }
+
+    FArray *x = FArray_AsStruct(ctx,hx);
+
+    FArray *y;
+    HPy hy = HPy_New(ctx,HPy_Type(ctx,hx),&y);
+    if (HPy_IsNull(hy)) {
+        return HPy_NULL;
+    }
+
+    int order[FARRAY_MAX_RANK];
+    for (int k = 0; k < HPy_Length(ctx,haxes); k++) {
+        order[k] = 1 + HPyLong_AsInt32_t(ctx,HPy_GetItem_i(ctx,haxes,k));
+    }
+
+    CFI_index_t extent[FARRAY_MAX_RANK];
+    if (!shape_to_extent(ctx,haxes,extent)) {
+        return HPy_NULL;
+    }
+
+    if (FArray_new_allocatable(x->a.type, x->a.rank, extent, y)) {
+        return HPy_NULL;
+    }
+
+    farray_permute_dims_2_dp(order,FARRAY_CAST(x),FARRAY_CAST(y));
+
+    return hy;
+}
 
 // FIXME: how do we expose constants as Python extension module
 // entities. Or should we just create them in Python?
@@ -1005,6 +1124,8 @@ static HPyDef *mod_defines[] = {
     &empty,
     &empty_like,
     &eye,
+    &reshape,
+    &permute_dims,
     &allocated,
     &elem_abs,
     &capabilities, /* dictionary */
